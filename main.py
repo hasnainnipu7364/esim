@@ -6,6 +6,7 @@ import re
 from flask import Flask, request
 from oauth2client.service_account import ServiceAccountCredentials
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from datetime import datetime
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")
@@ -22,6 +23,7 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 creds = ServiceAccountCredentials.from_json_keyfile_name("google_creds.json", scope)
 client = gspread.authorize(creds)
 sheet = client.open('eSIM Bot Database - Afiliate Plans').worksheet('Bot-data')
+log_sheet = client.open('eSIM Bot Database - Afiliate Plans').worksheet('Click-Logs')
 data = sheet.get_all_records()
 
 @app.route("/" + BOT_TOKEN, methods=['POST'])
@@ -140,15 +142,28 @@ def handle_message(message):
         send_plan(message, row)
 
 def send_plan(message, row):
+    user_id = message.chat.id
+    country = row['Country']
+    plan = row['Plan']
+    price = row['Price']
+    link = row['Link']
+    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Log to Google Sheet
+    try:
+        log_sheet.append_row([timestamp, str(user_id), country, plan, price, link])
+    except Exception as e:
+        print(f"Logging failed: {e}")
+
     text = (
         f"🔹 Provider: {row['Provider']}\n"
-        f"📱 Plan: {row['Plan']}\n"
+        f"📱 Plan: {plan}\n"
         f"📦 Data: {row['Data']}\n"
         f"⏳ Validity: {row['Validity']}\n"
-        f"💰 Price: {row['Price']}"
+        f"💰 Price: {price}"
     )
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🔗 Buy Now", url=row['Link']))
+    markup.add(InlineKeyboardButton("🔗 Buy Now", url=link))
     bot.send_message(message.chat.id, text, reply_markup=markup)
 
 if __name__ == "__main__":
