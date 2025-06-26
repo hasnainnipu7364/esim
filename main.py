@@ -174,6 +174,7 @@ def send_plan(message, row):
     text = (
         f"🌐 *{country}*
 "
+"
         f"📱 Plan: {plan}\n"
         f"📦 Data: {row['Data']}\n"
         f"⏳ Validity: {row['Validity']}\n"
